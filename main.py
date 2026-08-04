@@ -9,19 +9,24 @@ PREMIUM_LINK = os.environ.get("PREMIUM_LINK")
 
 @app.route('/postback')
 def postback():
-    amount = float(request.args.get('sumdep', 0))
-    user_id = request.args.get('user_id')
-    
-    if not user_id:
-        return "Error: No user_id"
-    
-    if amount >= 50:
-        msg = f"Congrats! ${amount} deposit hogaya 🎉\nPremium Access: {PREMIUM_LINK}"
-        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", 
-                      data={"chat_id": user_id, "text": msg})
-        return "OK - DM Sent"
-    else:
-        return "OK - Less than 50"
+    try:
+        amount = float(request.args.get('sumdep', 0))
+        user_id = request.args.get('user_id')
+        
+        if not user_id:
+            return "Error: No user_id"
+        
+        if amount >= 50:
+            msg = f"Congrats! ${amount} deposit hogaya 🎉\nPremium Access: {PREMIUM_LINK}"
+            r = requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", 
+                          data={"chat_id": user_id, "text": msg}, timeout=10)
+            print(r.text) # Log me response dikhega
+            return "OK - DM Sent"
+        else:
+            return "OK - Less than 50"
+    except Exception as e:
+        print("ERROR:", e)
+        return f"Error: {e}"
 
 @app.route('/')
 def home():
