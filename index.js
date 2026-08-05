@@ -2,48 +2,58 @@ const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 const app = express();
 
-const TOKEN = process.env.BOT_TOKEN;
-const PREMIUM_GROUP_LINK = process.env.https://t.me/+Y0NDuVj7CiM4Yzc0; // <-- yahan apna group link dalo
+app.use(express.json());
+
+// Railway ke Variables yahan se uthenge
+const TOKEN = process.env.TOKEN; 
+const PREMIUM_GROUP_LINK = process.env.PREMIUM_LINK;
 const MIN_DEPOSIT = 50;
-const bot = new TelegramBot(TOKEN, {polling: true});
 
-let users = {}; // { "quotex_id": chat_id }
+// Token check
+if (!TOKEN) {
+    console.error("ERROR: TOKEN not found in Environment Variables!");
+    process.exit(1);
+}
 
-// Step 1: User se ID lena
+const bot = new TelegramBot(TOKEN, { polling: true });
+
+// Database: temp memory. Railway restart hone pe data ud jayega
+const users = {}; 
+
 bot.onText(/\/start/, (msg) => {
-  bot.sendMessage(msg.chat.id, `Welcome! 👋
-Quotex me kam se kam $${MIN_DEPOSIT} deposit karo.
-Phir apni Quotex User ID yahan bhej do.
-Deposit check hote hi result mil jayega.`);
-  
-  bot.once('message', (msg2) => {
-    const qid = msg2.text.trim();
-    users[qid] = msg.chat.id;
-    bot.sendMessage(msg.chat.id, `✅ ID Save ho gayi: ${qid}\nAb Quotex se deposit ka wait kar rahe hain...`);
-  });
+    const chatId = msg.chat.id;
+    bot.sendMessage(chatId, `Welcome! Pehle apni Quotex User ID bhejo.\nExample: 12345678`);
 });
 
-// Step 2: Quotex Postback yahan aayega
+bot.on('message', (msg) => {
+    const chatId = msg.chat.id;
+    const text = msg.text;
+    
+    if (text === '/start') return;
+
+    if (!isNaN(text) && text.length > 5) {
+        users[chatId] = { quotex_id: text, deposited: false };
+        bot.sendMessage(chatId, `✅ ID Save ho gayi: ${text}\n\nAb deposit karo. Deposit hote hi group link mil jayega.`);
+    }
+});
+
+// Quotex ka Postback yahan aayega
 app.get('/check', (req, res) => {
-  const { user_id, status, amount } = req.query; 
-  const depositAmount = parseFloat(amount) || 0;
-  const chatId = users[user_id];
+    const { user_id, status, amount } = req.query;
+    
+    console.log(`Postback aya: ID=${user_id}, Status=${status}, Amount=${amount}`);
 
-  console.log(`Postback aya: ID=${user_id}, Status=${status}, Amount=${depositAmount}`);
+    const chatId = Object.keys(users).find(key => users[key].quotex_id === user_id);
 
-  if(!chatId){
-    console.log("ID bot me save nahi hai");
-    return res.send('OK'); 
-  }
-
-  if(status === 'deposit' && depositAmount >= MIN_DEPOSIT){
-    bot.sendMessage(chatId, `🎉 Mubarak ho! $${depositAmount} Deposit Confirm.\nYeh lo Premium Group ka link: ${PREMIUM_GROUP_LINK}`);
-  } else if(status === 'deposit') {
-    bot.sendMessage(chatId, `❌ Deposit kam hai.\nAapka deposit: $${depositAmount}\nPremium Group ke liye kam se kam $${MIN_DEPOSIT} zaroori hai.`);
-  }
-
-  res.send('OK'); 
+    if (chatId && status === 'deposit' && parseFloat(amount) >= MIN_DEPOSIT) {
+        users[chatId].deposited = true;
+        bot.sendMessage(chatId, `🎉 Mubarak ho! Deposit confirm ho gaya.\n\nPremium Group Join karo:\n${PREMIUM_GROUP_LINK}`);
+    }
+    
+    res.send('OK');
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Bot running on ${PORT}`));
+app.listen(PORT, () => {
+    console.log(`Bot running on port ${PORT}`);
+});
