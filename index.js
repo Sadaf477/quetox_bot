@@ -1,46 +1,43 @@
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 const app = express();
-app.use(express.json());
 
 const TOKEN = process.env.BOT_TOKEN;
-const TRADE_LINK = 'https://quetox.com/trade';
-const MIN_DEPOSIT = 50; // yahan se amount change kar sakte ho
+const PREMIUM_GROUP_LINK = 'https://t.me/+Y0NDuVj7CiM4Yzc0'; // yahan apna group link
+const MIN_DEPOSIT = 50;
 const bot = new TelegramBot(TOKEN, {polling: true});
 
-let users = {}; // { "quetox_id": chat_id }
+let users = {}; // { "quotex_id": chat_id }
 
+// Step 1: User bot ko /start karega
 bot.onText(/\/start/, (msg) => {
-  bot.sendMessage(msg.chat.id, `Salam! 👋
-Quetox Auto Link Bot me welcome.
+  bot.sendMessage(msg.chat.id, `Welcome! 👋
+Quotex me kam se kam $${MIN_DEPOSIT} deposit karo.
 
-${MIN_DEPOSIT}$ ya usse zyada deposit pe auto trading link pane ke liye apni Quetox User ID bhej do.`);
-
+Phir apni Quotex User ID yahan bhej do.
+Deposit confirm hote hi Premium Group ka link mil jayega.`);
+  
   bot.once('message', (msg2) => {
     const qid = msg2.text.trim();
     users[qid] = msg.chat.id;
-    bot.sendMessage(msg.chat.id, `✅ ID Save: ${qid}
-${MIN_DEPOSIT}$+ deposit hone pe link yahin DM ho jayega.`);
+    bot.sendMessage(msg.chat.id, `✅ ID Save ho gayi: ${qid}
+$${MIN_DEPOSIT}+ deposit pe link auto DM ho jayega.`);
   });
 });
 
-// IMPORTANT: Quetox se user_id, status, amount teeno bhejne hain
-app.post('/webhook', (req, res) => {
-  const { user_id, status, amount } = req.body;
+// Step 2: Quotex Postback yahan aayega - GET method
+app.get('/check', (req, res) => {
+  const { user_id, status, amount } = req.query; // GET me query use hota hai
   const depositAmount = parseFloat(amount) || 0;
 
+  console.log(`Postback aya: ID=${user_id}, Status=${status}, Amount=${depositAmount}`);
+
   if(status === 'deposit' && depositAmount >= MIN_DEPOSIT && users[user_id]){
-    bot.sendMessage(users[user_id], `🎉 Mubarak ho! $${depositAmount} Deposit Confirm hua.
-Yeh lo trading link: ${TRADE_LINK}`);
+    bot.sendMessage(users[user_id], `🎉 Mubarak ho! $${depositAmount} Deposit Confirm.
+Yeh lo Premium Group ka link: ${PREMIUM_GROUP_LINK}`);
   }
 
-  // Agar kam deposit hua to usko bata do
-  else if(status === 'deposit' && depositAmount < MIN_DEPOSIT && users[user_id]){
-    bot.sendMessage(users[user_id], `Deposit: $${depositAmount} received.
-${MIN_DEPOSIT}$+ pe trading link activate hoga.`);
-  }
-
-  res.sendStatus(200);
+  res.send('OK'); // Quotex ko 200 OK chahiye
 });
 
 const PORT = process.env.PORT || 3000;
