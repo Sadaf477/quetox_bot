@@ -3,7 +3,7 @@ const express = require('express');
 const app = express();
 
 const TOKEN = process.env.BOT_TOKEN;
-const PREMIUM_GROUP_LINK = 'https://t.me/+Y0NDuVj7CiM4Yzc0'; // <-- yahan apna group link dalo
+const PREMIUM_GROUP_LINK = process.env.https://t.me/+Y0NDuVj7CiM4Yzc0; // <-- yahan apna group link dalo
 const MIN_DEPOSIT = 50;
 const bot = new TelegramBot(TOKEN, {polling: true});
 
